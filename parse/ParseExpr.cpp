@@ -16,6 +16,7 @@
 #include "Parse.h"
 #include "Symbols.h"
 #include <iostream>
+#include <regex>
 #include <sstream>
 
 using namespace uscc::parse;
@@ -185,6 +186,11 @@ shared_ptr<ASTExpr> Parser::parseFactor()
 	if ((retVal = parseIdentFactor()))
 		;
 	// PA1: Add additional cases
+
+    else if ((retVal = parseConstantFactor()))
+        ;
+    else if ((retVal = parseStringFactor()))
+        ;
 	
 	return retVal;
 }
@@ -204,7 +210,20 @@ shared_ptr<ASTConstantExpr> Parser::parseConstantFactor()
 {
 	shared_ptr<ASTConstantExpr> retVal;
 
-	// PA1: Implement
+    // PA1: Implement
+
+    if (peekToken() == Token::Constant)
+    {
+        const std::string text = getTokenTxt();
+        std::regex pattern(R"(-?(0|([1-9][0-9]*)))");
+
+        if (std::regex_match(text, pattern))
+        {
+            retVal = make_shared<ASTConstantExpr>(text);
+            consumeToken();
+        }
+    }
+
 	
 	return retVal;
 }
@@ -215,6 +234,11 @@ shared_ptr<ASTStringExpr> Parser::parseStringFactor()
 	shared_ptr<ASTStringExpr> retVal;
 
 	// PA1: Implement
+
+    if (peekAndConsume(Token::String)) {
+        const std::string text = getTokenTxt();
+        retVal = make_shared<ASTStringExpr>(text, mStrings);
+    }
 	
 	return retVal;
 }

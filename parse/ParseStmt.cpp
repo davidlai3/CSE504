@@ -16,6 +16,8 @@
 #include "Parse.h"
 #include "Symbols.h"
 
+#include <iostream>
+
 using namespace uscc::parse;
 using namespace uscc::scan;
 
@@ -200,6 +202,8 @@ shared_ptr<ASTStmt> Parser::parseStmt()
 		else if ((retVal = parseAssignStmt()))
 			;
 		// PA1: Add additional cases
+        else if ((retVal = parseReturnStmt()))
+            ;
 		
 		else if (peekIsOneOf({Token::Key_int, Token::Key_char}))
 		{
@@ -235,8 +239,34 @@ shared_ptr<ASTStmt> Parser::parseStmt()
 shared_ptr<ASTCompoundStmt> Parser::parseCompoundStmt(bool isFuncBody)
 {
 	shared_ptr<ASTCompoundStmt> retVal;
+    bool openBrace = false;
 	
 	// PA1: Implement
+
+    if (peekAndConsume(Token::LBrace))
+    {
+        retVal = make_shared<ASTCompoundStmt>();
+        openBrace = true;
+
+        shared_ptr<ASTDecl> retDecl;
+        while ((retDecl = parseDecl()))
+        {
+            retVal->addDecl(retDecl);
+        }
+
+
+        shared_ptr<ASTStmt> retStmt;
+        while ((retStmt = parseStmt()))
+        {
+            retVal->addStmt(retStmt);
+        }
+
+    }
+    if (openBrace && !peekAndConsume(Token::RBrace))
+    {
+        throw ParseExceptMsg("Valid compound statment must end in }");
+    }
+
 	
 	return retVal;
 }
@@ -379,9 +409,18 @@ shared_ptr<ASTWhileStmt> Parser::parseWhileStmt()
 shared_ptr<ASTReturnStmt> Parser::parseReturnStmt()
 {
 	shared_ptr<ASTReturnStmt> retVal;
-	
+
 	// PA1: Implement
-	
+    if (peekAndConsume(Token::Key_return))
+    {
+        retVal = make_shared<ASTReturnStmt>(parseExpr());
+
+        if (!peekAndConsume(Token::SemiColon))
+        {
+            throw ParseExceptMsg("Return statement must end in ;");
+        }
+    }
+
 	return retVal;
 }
 
