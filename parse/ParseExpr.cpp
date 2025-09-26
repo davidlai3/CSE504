@@ -93,7 +93,7 @@ shared_ptr<ASTExpr> Parser::parseAndTerm()
 
 	// PA1: This should not directly check factor
 	// but instead implement the proper grammar rule
-	retVal = parseFactor();
+    retVal = parseRelExpr();
 	
 	return retVal;
 }
@@ -114,6 +114,19 @@ shared_ptr<ASTExpr> Parser::parseRelExpr()
 
 	// PA1: Implement
 	
+
+    if (shared_ptr<ASTExpr> lhs = parseNumExpr())
+    {
+        shared_ptr<ASTExpr> rhs = parseRelExprPrime(lhs);
+
+        if (rhs) {
+            retVal = rhs;
+        }
+        else {
+            retVal = lhs;
+        }
+    }
+
 	return retVal;
 }
 
@@ -123,6 +136,28 @@ shared_ptr<ASTBinaryCmpOp> Parser::parseRelExprPrime(shared_ptr<ASTExpr> lhs)
 	
 	// PA1: Implement
 	
+    if (peekIsOneOf({Token::EqualTo, Token::NotEqual, Token::LessThan, Token::GreaterThan})) {
+
+        shared_ptr<ASTBinaryCmpOp> cur = make_shared<ASTBinaryCmpOp>(peekToken());
+
+        consumeToken();
+
+        cur->setLHS(lhs);
+
+        shared_ptr<ASTExpr> rhs = parseNumExpr();
+
+        cur->setRHS(rhs);
+
+        if (shared_ptr<ASTBinaryCmpOp> next = parseRelExprPrime(cur))
+        {
+            retVal = next;
+        }
+        else
+        {
+            retVal = cur;
+        }
+    }
+
 	return retVal;
 }
 
@@ -130,9 +165,21 @@ shared_ptr<ASTBinaryCmpOp> Parser::parseRelExprPrime(shared_ptr<ASTExpr> lhs)
 shared_ptr<ASTExpr> Parser::parseNumExpr()
 {
 	shared_ptr<ASTExpr> retVal;
-	
+
 	// PA1: Implement
 	
+    if (shared_ptr<ASTExpr> lhs = parseTerm())
+    {
+        shared_ptr<ASTBinaryMathOp> rhs = parseNumExprPrime(lhs);
+
+        if (rhs) {
+            retVal = rhs;
+        }
+        else {
+            retVal = lhs;
+        }
+    }
+
 	return retVal;
 }
 
@@ -141,7 +188,29 @@ shared_ptr<ASTBinaryMathOp> Parser::parseNumExprPrime(shared_ptr<ASTExpr> lhs)
 	shared_ptr<ASTBinaryMathOp> retVal;
 
 	// PA1: Implement
-	
+
+    if (peekIsOneOf({Token::Plus, Token::Minus})) {
+
+        shared_ptr<ASTBinaryMathOp> cur = make_shared<ASTBinaryMathOp>(peekToken());
+
+        consumeToken();
+
+        cur->setLHS(lhs);
+
+        shared_ptr<ASTExpr> rhs = parseTerm();
+
+        cur->setRHS(rhs);
+
+        if (shared_ptr<ASTBinaryMathOp> next = parseNumExprPrime(cur))
+        {
+            retVal = next;
+        }
+        else
+        {
+            retVal = cur;
+        }
+    }
+
 	return retVal;
 }
 
@@ -151,7 +220,19 @@ shared_ptr<ASTExpr> Parser::parseTerm()
 	shared_ptr<ASTExpr> retVal;
 
 	// PA1: Implement
-	
+
+    if (shared_ptr<ASTExpr> lhs = parseValue())
+    {
+        shared_ptr<ASTBinaryMathOp> rhs = parseTermPrime(lhs);
+
+        if (rhs) {
+            retVal = rhs;
+        }
+        else {
+            retVal = lhs;
+        }
+    }
+
 	return retVal;
 }
 
@@ -160,7 +241,31 @@ shared_ptr<ASTBinaryMathOp> Parser::parseTermPrime(shared_ptr<ASTExpr> lhs)
 	shared_ptr<ASTBinaryMathOp> retVal;
 
 	// PA1: Implement
-	
+
+    // Switch to right recursion
+
+    if (peekIsOneOf({Token::Mult, Token::Div, Token::Mod})) {
+
+        shared_ptr<ASTBinaryMathOp> cur = make_shared<ASTBinaryMathOp>(peekToken());
+
+        consumeToken();
+
+        cur->setLHS(lhs);
+
+        shared_ptr<ASTExpr> rhs = parseValue();
+
+        cur->setRHS(rhs);
+
+        if (shared_ptr<ASTBinaryMathOp> next = parseTermPrime(cur))
+        {
+            retVal = next;
+        }
+        else
+        {
+            retVal = cur;
+        }
+    }
+
 	return retVal;
 }
 
@@ -168,8 +273,14 @@ shared_ptr<ASTBinaryMathOp> Parser::parseTermPrime(shared_ptr<ASTExpr> lhs)
 shared_ptr<ASTExpr> Parser::parseValue()
 {
 	shared_ptr<ASTExpr> retVal;
-	
+
 	// PA1: Implement
+    if (peekAndConsume(Token::Not)) {
+        retVal = make_shared<ASTNotExpr>(parseFactor());
+    }
+    else {
+        retVal = parseFactor();
+    }
 	
 	return retVal;
 }
@@ -191,6 +302,12 @@ shared_ptr<ASTExpr> Parser::parseFactor()
         ;
     else if ((retVal = parseStringFactor()))
         ;
+    else if ((retVal = parseParenFactor()))
+        ;
+    else if ((retVal = parseIncFactor()))
+        ;
+    else if ((retVal = parseDecFactor()))
+        ;
 	
 	return retVal;
 }
@@ -201,6 +318,15 @@ shared_ptr<ASTExpr> Parser::parseParenFactor()
 	shared_ptr<ASTExpr> retVal;
 
 	// PA1: Implement
+
+    if (peekAndConsume(Token::LParen))
+    {
+        retVal = parseExpr();
+
+        if (!peekAndConsume(Token::RParen)) {
+            throw ParseExceptMsg("Expression must end in a )");
+        }
+    }
 	
 	return retVal;
 }
@@ -215,7 +341,7 @@ shared_ptr<ASTConstantExpr> Parser::parseConstantFactor()
     if (peekToken() == Token::Constant)
     {
         const std::string text = getTokenTxt();
-        std::regex pattern(R"(-?(0|([1-9][0-9]*)))");
+        std::regex pattern(R"(^(?:'(?:[^'\\]|\\[tn'\\])'|-?(?:0|[1-9][0-9]*))$)");
 
         if (std::regex_match(text, pattern))
         {
@@ -235,9 +361,11 @@ shared_ptr<ASTStringExpr> Parser::parseStringFactor()
 
 	// PA1: Implement
 
-    if (peekAndConsume(Token::String)) {
+    if (peekToken() == Token::String) {
         const std::string text = getTokenTxt();
         retVal = make_shared<ASTStringExpr>(text, mStrings);
+
+        consumeToken();
     }
 	
 	return retVal;
@@ -485,8 +613,17 @@ shared_ptr<ASTExpr> Parser::parseIdentFactor()
 shared_ptr<ASTExpr> Parser::parseIncFactor()
 {
 	shared_ptr<ASTExpr> retVal;
-	
-	// PA1: Implement
+
+    // PA1: Implement
+
+    if (peekAndConsume(Token::Inc))
+    {
+		Identifier* ident = getVariable(getTokenTxt());
+		
+		consumeToken();
+
+        retVal = make_shared<ASTIncExpr>(*ident);
+    }
 	
 	return retVal;
 }
@@ -497,6 +634,15 @@ shared_ptr<ASTExpr> Parser::parseDecFactor()
 	shared_ptr<ASTExpr> retVal;
 	
 	// PA1: Implement
+
+    if (peekAndConsume(Token::Dec))
+    {
+		Identifier* ident = getVariable(getTokenTxt());
+		
+		consumeToken();
+
+        retVal = make_shared<ASTDecExpr>(*ident);
+    }
 
 	return retVal;
 }
