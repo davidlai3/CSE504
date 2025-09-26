@@ -204,6 +204,12 @@ shared_ptr<ASTStmt> Parser::parseStmt()
 		// PA1: Add additional cases
         else if ((retVal = parseReturnStmt()))
             ;
+        else if ((retVal = parseWhileStmt()))
+            ;
+        else if ((retVal = parseExprStmt()))
+            ;
+        else if ((retVal = parseNullStmt()))
+            ;
 		
 		else if (peekIsOneOf({Token::Key_int, Token::Key_char}))
 		{
@@ -402,6 +408,21 @@ shared_ptr<ASTWhileStmt> Parser::parseWhileStmt()
 	shared_ptr<ASTWhileStmt> retVal;
 	
 	// PA1: Implement
+
+    if (peekAndConsume(Token::Key_while)) {
+        shared_ptr<ASTExpr> expr;
+        shared_ptr<ASTStmt> stmt;
+
+        expr = parseParenFactor();
+
+        if (expr) {
+            stmt = parseStmt();
+        }
+
+        if (expr && stmt) {
+            retVal = make_shared<ASTWhileStmt>(expr, stmt);
+        }
+    }
 	
 	return retVal;
 }
@@ -430,6 +451,15 @@ shared_ptr<ASTExprStmt> Parser::parseExprStmt()
 	
 	// PA1: Implement
 	
+    if (shared_ptr<ASTExpr> expr = parseExpr()) {
+        retVal = make_shared<ASTExprStmt>(expr);
+
+        if (!peekAndConsume(Token::SemiColon))
+        {
+            throw ParseExceptMsg("Return statement must end in ;");
+        }
+    }
+
 	return retVal;
 }
 
@@ -438,6 +468,11 @@ shared_ptr<ASTNullStmt> Parser::parseNullStmt()
 	shared_ptr<ASTNullStmt> retVal;
 	
 	// PA1: Implement
+
+    if (peekAndConsume(Token::SemiColon))
+    {
+        retVal = make_shared<ASTNullStmt>();
+    }
 	
 	return retVal;
 }
