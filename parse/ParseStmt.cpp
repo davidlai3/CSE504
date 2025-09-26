@@ -17,6 +17,7 @@
 #include "Symbols.h"
 
 #include <iostream>
+#include <sstream>
 
 using namespace uscc::parse;
 using namespace uscc::scan;
@@ -210,6 +211,8 @@ shared_ptr<ASTStmt> Parser::parseStmt()
             ;
         else if ((retVal = parseNullStmt()))
             ;
+        else if ((retVal = parseIfStmt()))
+            ;
 		
 		else if (peekIsOneOf({Token::Key_int, Token::Key_char}))
 		{
@@ -400,6 +403,50 @@ shared_ptr<ASTIfStmt> Parser::parseIfStmt()
 	
 	// PA1: Implement
 	
+    shared_ptr<ASTExpr> expr;
+    shared_ptr<ASTStmt> stmt;
+    if (peekAndConsume(Token::Key_if)) {
+
+        if (peekAndConsume(Token::LParen)) {
+            expr = parseExpr();
+
+            if (expr) {
+
+                if (!peekAndConsume(Token::RParen))
+                    ;
+                stmt = parseStmt();
+            }
+            else {
+                throw ParseExceptMsg("Invalid condition for if statement");
+            }
+        }
+
+        else {
+            throw TokenMismatch(Token::LParen, mCurrToken, getTokenTxt());
+        }
+
+    }
+
+    if (expr && stmt)
+    {
+        if (peekAndConsume(Token::Key_else))
+        {
+            if (shared_ptr<ASTStmt> elseStmt = parseStmt())
+            {
+                retVal = make_shared<ASTIfStmt>(expr, stmt, elseStmt);
+            }
+            else
+            {
+                retVal = make_shared<ASTIfStmt>(expr, stmt);
+            }
+        }
+        else
+        {
+            retVal = make_shared<ASTIfStmt>(expr, stmt);
+        }
+    }
+
+
 	return retVal;
 }
 
@@ -413,10 +460,19 @@ shared_ptr<ASTWhileStmt> Parser::parseWhileStmt()
         shared_ptr<ASTExpr> expr;
         shared_ptr<ASTStmt> stmt;
 
-        expr = parseParenFactor();
+        if (!peekAndConsume(Token::LParen))
+            ;
+
+        expr = parseExpr();
 
         if (expr) {
+            if (!peekAndConsume(Token::RParen))
+                ;
+
             stmt = parseStmt();
+        }
+        else {
+            throw ParseExceptMsg("Invalid condition for while statement");
         }
 
         if (expr && stmt) {

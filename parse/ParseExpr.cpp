@@ -93,48 +93,55 @@ shared_ptr<ASTExpr> Parser::parseAndTerm()
 
 	// PA1: This should not directly check factor
 	// but instead implement the proper grammar rule
-    if (shared_ptr<ASTExpr> lhs = parseRelExpr())
-    {
-        shared_ptr<ASTExpr> rhs = parseAndTermPrime(lhs);
 
-        if (rhs) {
-            retVal = rhs;
-        }
-        else {
-            retVal = lhs;
-        }
-    }
+	shared_ptr<ASTExpr> relExpr = parseRelExpr();
 
-	return retVal;
+	if (relExpr)
+	{
+		retVal = relExpr;
+		// Check if this is followed by an op (optional)
+		shared_ptr<ASTLogicalAnd> andTermPrime = parseAndTermPrime(retVal);
+		
+		if (andTermPrime)
+		{
+			retVal = andTermPrime;
+		}
+	}
+
+    return retVal;
 }
 
 shared_ptr<ASTLogicalAnd> Parser::parseAndTermPrime(shared_ptr<ASTExpr> lhs)
 {
+
 	shared_ptr<ASTLogicalAnd> retVal;
 
 	// PA1: Implement
-	
-    if (peekToken() == Token::And) {
+	// Must be &&
 
-        shared_ptr<ASTLogicalAnd> cur = make_shared<ASTLogicalAnd>();
-
-        consumeToken();
-
-        cur->setLHS(lhs);
-
-        shared_ptr<ASTExpr> rhs = parseRelExpr();
-
-        cur->setRHS(rhs);
-
-        if (shared_ptr<ASTLogicalAnd> next = parseAndTermPrime(cur))
-        {
-            retVal = next;
-        }
-        else
-        {
-            retVal = cur;
-        }
-    }
+	if (peekToken() == Token::And)
+	{
+		Token::Tokens op = peekToken();
+		retVal = make_shared<ASTLogicalAnd>();
+		consumeToken();
+		
+		// Set the lhs to our parameter
+		retVal->setLHS(lhs);
+		
+		shared_ptr<ASTExpr> rhs = parseRelExpr();
+		if (!rhs)
+		{
+			throw OperandMissing(op);
+		}
+		
+		retVal->setRHS(rhs);
+		
+		shared_ptr<ASTLogicalAnd> andPrime = parseAndTermPrime(retVal);
+		if (andPrime)
+		{
+			retVal = andPrime;
+		}
+	}
 
 	return retVal;
 }
@@ -146,17 +153,19 @@ shared_ptr<ASTExpr> Parser::parseRelExpr()
 
 	// PA1: Implement
 
-    if (shared_ptr<ASTExpr> lhs = parseNumExpr())
-    {
-        shared_ptr<ASTExpr> rhs = parseRelExprPrime(lhs);
+	shared_ptr<ASTExpr> numExpr = parseNumExpr();
 
-        if (rhs) {
-            retVal = rhs;
-        }
-        else {
-            retVal = lhs;
-        }
-    }
+	if (numExpr)
+	{
+		retVal = numExpr;
+		// Check if this is followed by an op (optional)
+		shared_ptr<ASTBinaryCmpOp> relExprPrime = parseRelExprPrime(retVal);
+		
+		if (relExprPrime)
+		{
+			retVal = relExprPrime;
+		}
+	}
 
 	return retVal;
 }
@@ -167,27 +176,29 @@ shared_ptr<ASTBinaryCmpOp> Parser::parseRelExprPrime(shared_ptr<ASTExpr> lhs)
 	
 	// PA1: Implement
 	
-    if (peekIsOneOf({Token::EqualTo, Token::NotEqual, Token::LessThan, Token::GreaterThan})) {
-
-        shared_ptr<ASTBinaryCmpOp> cur = make_shared<ASTBinaryCmpOp>(peekToken());
-
-        consumeToken();
-
-        cur->setLHS(lhs);
-
-        shared_ptr<ASTExpr> rhs = parseNumExpr();
-
-        cur->setRHS(rhs);
-
-        if (shared_ptr<ASTBinaryCmpOp> next = parseRelExprPrime(cur))
-        {
-            retVal = next;
-        }
-        else
-        {
-            retVal = cur;
-        }
-    }
+	if (peekIsOneOf({Token::EqualTo, Token::NotEqual, Token::LessThan, Token::GreaterThan}))
+	{
+		Token::Tokens op = peekToken();
+		retVal = make_shared<ASTBinaryCmpOp>(op);
+		consumeToken();
+		
+		// Set the lhs to our parameter
+		retVal->setLHS(lhs);
+		
+		shared_ptr<ASTExpr> rhs = parseNumExpr();
+		if (!rhs)
+		{
+			throw OperandMissing(op);
+		}
+		
+		retVal->setRHS(rhs);
+		
+		shared_ptr<ASTBinaryCmpOp> relExprPrime = parseRelExprPrime(retVal);
+		if (relExprPrime)
+		{
+			retVal = relExprPrime;
+		}
+	}
 
 	return retVal;
 }
@@ -199,17 +210,19 @@ shared_ptr<ASTExpr> Parser::parseNumExpr()
 
 	// PA1: Implement
 	
-    if (shared_ptr<ASTExpr> lhs = parseTerm())
-    {
-        shared_ptr<ASTBinaryMathOp> rhs = parseNumExprPrime(lhs);
+	shared_ptr<ASTExpr> term = parseTerm();
 
-        if (rhs) {
-            retVal = rhs;
-        }
-        else {
-            retVal = lhs;
-        }
-    }
+	if (term)
+	{
+		retVal = term;
+		// Check if this is followed by an op (optional)
+		shared_ptr<ASTBinaryMathOp> numExprPrime = parseNumExprPrime(retVal);
+		
+		if (numExprPrime)
+		{
+			retVal = numExprPrime;
+		}
+	}
 
 	return retVal;
 }
@@ -220,27 +233,29 @@ shared_ptr<ASTBinaryMathOp> Parser::parseNumExprPrime(shared_ptr<ASTExpr> lhs)
 
 	// PA1: Implement
 
-    if (peekIsOneOf({Token::Plus, Token::Minus})) {
-
-        shared_ptr<ASTBinaryMathOp> cur = make_shared<ASTBinaryMathOp>(peekToken());
-
-        consumeToken();
-
-        cur->setLHS(lhs);
-
-        shared_ptr<ASTExpr> rhs = parseTerm();
-
-        cur->setRHS(rhs);
-
-        if (shared_ptr<ASTBinaryMathOp> next = parseNumExprPrime(cur))
-        {
-            retVal = next;
-        }
-        else
-        {
-            retVal = cur;
-        }
-    }
+	if (peekIsOneOf({Token::Plus, Token::Minus}))
+	{
+		Token::Tokens op = peekToken();
+		retVal = make_shared<ASTBinaryMathOp>(op);
+		consumeToken();
+		
+		// Set the lhs to our parameter
+		retVal->setLHS(lhs);
+		
+		shared_ptr<ASTExpr> rhs = parseTerm();
+		if (!rhs)
+		{
+			throw OperandMissing(op);
+		}
+		
+		retVal->setRHS(rhs);
+		
+		shared_ptr<ASTBinaryMathOp> numExprPrime = parseNumExprPrime(retVal);
+		if (numExprPrime)
+		{
+			retVal = numExprPrime;
+		}
+	}
 
 	return retVal;
 }
@@ -248,22 +263,28 @@ shared_ptr<ASTBinaryMathOp> Parser::parseNumExprPrime(shared_ptr<ASTExpr> lhs)
 // Term -->
 shared_ptr<ASTExpr> Parser::parseTerm()
 {
+
 	shared_ptr<ASTExpr> retVal;
 
-	// PA1: Implement
-
-    if (shared_ptr<ASTExpr> lhs = parseValue())
-    {
-        shared_ptr<ASTBinaryMathOp> rhs = parseTermPrime(lhs);
-
-        if (rhs) {
-            retVal = rhs;
-        }
-        else {
-            retVal = lhs;
-        }
-    }
-
+    // PA1 : Implement
+	
+	// We should first get a value
+	shared_ptr<ASTExpr> value = parseValue();
+	
+	// If we didn't get an value, then this isn't a term
+	if (value)
+	{
+		retVal = value;
+		// Check if this is followed by an op (optional)
+		shared_ptr<ASTBinaryMathOp> termPrime = parseTermPrime(retVal);
+		
+		if (termPrime)
+		{
+			// If we got a termPrime, return this instead of just term
+			retVal = termPrime;
+		}
+	}
+	
 	return retVal;
 }
 
@@ -272,31 +293,35 @@ shared_ptr<ASTBinaryMathOp> Parser::parseTermPrime(shared_ptr<ASTExpr> lhs)
 	shared_ptr<ASTBinaryMathOp> retVal;
 
 	// PA1: Implement
-
-    // Switch to right recursion
-
-    if (peekIsOneOf({Token::Mult, Token::Div, Token::Mod})) {
-
-        shared_ptr<ASTBinaryMathOp> cur = make_shared<ASTBinaryMathOp>(peekToken());
-
-        consumeToken();
-
-        cur->setLHS(lhs);
-
-        shared_ptr<ASTExpr> rhs = parseValue();
-
-        cur->setRHS(rhs);
-
-        if (shared_ptr<ASTBinaryMathOp> next = parseTermPrime(cur))
-        {
-            retVal = next;
-        }
-        else
-        {
-            retVal = cur;
-        }
-    }
-
+	
+	// Must be ||
+	if (peekIsOneOf({Token::Mult, Token::Div, Token::Mod}))
+	{
+		// Make the binary cmp op
+		Token::Tokens op = peekToken();
+		retVal = make_shared<ASTBinaryMathOp>(op);
+		consumeToken();
+		
+		// Set the lhs to our parameter
+		retVal->setLHS(lhs);
+		
+		// We MUST get a AndTerm as the RHS of this operand
+		shared_ptr<ASTExpr> rhs = parseValue();
+		if (!rhs)
+		{
+			throw OperandMissing(op);
+		}
+		
+		retVal->setRHS(rhs);
+		
+		// See comment in parseTermPrime if you're confused by this
+		shared_ptr<ASTBinaryMathOp> termPrime = parseTermPrime(retVal);
+		if (termPrime)
+		{
+			retVal = termPrime;
+		}
+	}
+	
 	return retVal;
 }
 
@@ -306,8 +331,16 @@ shared_ptr<ASTExpr> Parser::parseValue()
 	shared_ptr<ASTExpr> retVal;
 
 	// PA1: Implement
+
     if (peekAndConsume(Token::Not)) {
-        retVal = make_shared<ASTNotExpr>(parseFactor());
+
+        shared_ptr<ASTExpr> factor = parseFactor();
+
+        if (!factor) {
+            throw ParseExceptMsg("! must be followed by an expression.");
+        }
+
+        retVal = make_shared<ASTNotExpr>(factor);
     }
     else {
         retVal = parseFactor();
@@ -339,6 +372,8 @@ shared_ptr<ASTExpr> Parser::parseFactor()
         ;
     else if ((retVal = parseDecFactor()))
         ;
+    else if ((retVal = parseAddrOfArrayFactor()))
+        ;
 	
 	return retVal;
 }
@@ -353,6 +388,10 @@ shared_ptr<ASTExpr> Parser::parseParenFactor()
     if (peekAndConsume(Token::LParen))
     {
         retVal = parseExpr();
+
+        if (!retVal) {
+            throw ParseExceptMsg("Not a valid expression inside parenthesis");
+        }
 
         if (!peekAndConsume(Token::RParen)) {
             throw ParseExceptMsg("Expression must end in a )");
@@ -685,5 +724,87 @@ shared_ptr<ASTExpr> Parser::parseAddrOfArrayFactor()
 	
 	// PA1: Implement
 	
+    if (!peekAndConsume(Token::Addr)) 
+    {
+        return retVal;
+    }
+
+    if (peekToken() == Token::Identifier ||
+        mUnusedIdent != nullptr)
+   {
+        Identifier* ident = nullptr;
+        
+        // If we have an "unused identifier," which means that
+        // AssignStmt looked at this and decided it didn't want it,
+        // that means we're already a token AFTER the identifier.
+        if (mUnusedIdent)
+        {
+            ident = mUnusedIdent;
+            mUnusedIdent = nullptr;
+        }
+        else
+        {
+            ident = getVariable(getTokenTxt());
+            consumeToken();
+        }
+        
+        // Now we need to look ahead and see if this is an array
+        // or function call reference, since id is a common
+        // left prefix.
+        if (peekToken() == Token::LBracket)
+        {
+            // Check to make sure this is an array
+            if (mCheckSemant && ident->getType() != Type::IntArray &&
+                ident->getType() != Type::CharArray &&
+                !ident->isDummy())
+            {
+                std::string err("'");
+                err += ident->getName();
+                err += "' is not an array";
+                reportSemantError(err);
+                consumeUntil(Token::RBracket);
+                if (peekToken() == Token::EndOfFile)
+                {
+                    throw EOFExcept();
+                }
+                
+                matchToken(Token::RBracket);
+                
+                // Just return our error variable
+                retVal = make_shared<ASTIdentExpr>(*mSymbols.getIdentifier("@@variable"));
+            }
+            else
+            {
+                consumeToken();
+                try
+                {
+                    shared_ptr<ASTExpr> expr = parseExpr();
+                    if (!expr)
+                    {
+                        throw ParseExceptMsg("Missing required subscript expression.");
+                    }
+                    
+                    shared_ptr<ASTArraySub> array = make_shared<ASTArraySub>(*ident, expr);
+                    retVal = make_shared<ASTArrayExpr>(array);
+                }
+                catch (ParseExcept& e)
+                {
+                    // If this expr is bad, consume until RBracket
+                    reportError(e);
+                    consumeUntil(Token::RBracket);
+                    if (peekToken() == Token::EndOfFile)
+                    {
+                        throw EOFExcept();
+                    }
+                }
+                
+                matchToken(Token::RBracket);
+            }
+        }
+    }
+    else {
+        throw ParseExceptMsg("& must be followed by an identifier.");
+    }
+
 	return retVal;
 }
