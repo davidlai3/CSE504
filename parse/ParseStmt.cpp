@@ -252,18 +252,20 @@ shared_ptr<ASTCompoundStmt> Parser::parseCompoundStmt(bool isFuncBody)
 	
 	// PA1: Implement
 
+    // Check for left brace
     if (peekAndConsume(Token::LBrace))
     {
         retVal = make_shared<ASTCompoundStmt>();
         openBrace = true;
 
+        // Consume as many decls as possible
         shared_ptr<ASTDecl> retDecl;
         while ((retDecl = parseDecl()))
         {
             retVal->addDecl(retDecl);
         }
 
-
+        // Consume as many stmts as possible
         shared_ptr<ASTStmt> retStmt;
         while ((retStmt = parseStmt()))
         {
@@ -271,6 +273,7 @@ shared_ptr<ASTCompoundStmt> Parser::parseCompoundStmt(bool isFuncBody)
         }
 
     }
+    // Check for right brace
     if (openBrace && !peekAndConsume(Token::RBrace))
     {
         throw ParseExceptMsg("Valid compound statment must end in }");
@@ -427,6 +430,7 @@ shared_ptr<ASTIfStmt> Parser::parseIfStmt()
 
     }
 
+    // Parse optional else statement
     if (expr && stmt)
     {
         if (peekAndConsume(Token::Key_else))
@@ -488,10 +492,13 @@ shared_ptr<ASTReturnStmt> Parser::parseReturnStmt()
 	shared_ptr<ASTReturnStmt> retVal;
 
 	// PA1: Implement
+
+    // Consume return keyword
     if (peekAndConsume(Token::Key_return))
     {
         retVal = make_shared<ASTReturnStmt>(parseExpr());
 
+        // Check for optional expression
         if (!peekAndConsume(Token::SemiColon))
         {
             throw ParseExceptMsg("Return statement must end in ;");

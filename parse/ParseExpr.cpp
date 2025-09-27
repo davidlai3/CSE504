@@ -15,8 +15,6 @@
 
 #include "Parse.h"
 #include "Symbols.h"
-#include <iostream>
-#include <regex>
 #include <sstream>
 
 using namespace uscc::parse;
@@ -294,10 +292,8 @@ shared_ptr<ASTBinaryMathOp> Parser::parseTermPrime(shared_ptr<ASTExpr> lhs)
 
 	// PA1: Implement
 	
-	// Must be ||
 	if (peekIsOneOf({Token::Mult, Token::Div, Token::Mod}))
 	{
-		// Make the binary cmp op
 		Token::Tokens op = peekToken();
 		retVal = make_shared<ASTBinaryMathOp>(op);
 		consumeToken();
@@ -305,7 +301,6 @@ shared_ptr<ASTBinaryMathOp> Parser::parseTermPrime(shared_ptr<ASTExpr> lhs)
 		// Set the lhs to our parameter
 		retVal->setLHS(lhs);
 		
-		// We MUST get a AndTerm as the RHS of this operand
 		shared_ptr<ASTExpr> rhs = parseValue();
 		if (!rhs)
 		{
@@ -385,14 +380,17 @@ shared_ptr<ASTExpr> Parser::parseParenFactor()
 
 	// PA1: Implement
 
+    // Consume left paren
     if (peekAndConsume(Token::LParen))
     {
+        // Check for required expression
         retVal = parseExpr();
 
         if (!retVal) {
             throw ParseExceptMsg("Not a valid expression inside parenthesis");
         }
 
+        // Consume right paren
         if (!peekAndConsume(Token::RParen)) {
             throw ParseExceptMsg("Expression must end in a )");
         }
@@ -408,19 +406,15 @@ shared_ptr<ASTConstantExpr> Parser::parseConstantFactor()
 
     // PA1: Implement
 
+    // If constant then consume
     if (peekToken() == Token::Constant)
     {
         const std::string text = getTokenTxt();
-        std::regex pattern(R"(^(?:'(?:[^'\\]|\\[tn'\\])'|-?(?:0|[1-9][0-9]*))$)");
+        retVal = make_shared<ASTConstantExpr>(text);
 
-        if (std::regex_match(text, pattern))
-        {
-            retVal = make_shared<ASTConstantExpr>(text);
-            consumeToken();
-        }
+        consumeToken();
     }
 
-	
 	return retVal;
 }
 
@@ -431,6 +425,7 @@ shared_ptr<ASTStringExpr> Parser::parseStringFactor()
 
 	// PA1: Implement
 
+    // If string then consume
     if (peekToken() == Token::String) {
         const std::string text = getTokenTxt();
         retVal = make_shared<ASTStringExpr>(text, mStrings);
@@ -686,8 +681,10 @@ shared_ptr<ASTExpr> Parser::parseIncFactor()
 
     // PA1: Implement
 
+    // Check for increment operator
     if (peekAndConsume(Token::Inc))
     {
+        // Get the identifier
 		Identifier* ident = getVariable(getTokenTxt());
 		
 		consumeToken();
@@ -705,8 +702,10 @@ shared_ptr<ASTExpr> Parser::parseDecFactor()
 	
 	// PA1: Implement
 
+    // Check for decrement operator
     if (peekAndConsume(Token::Dec))
     {
+        // Get the identifier
 		Identifier* ident = getVariable(getTokenTxt());
 		
 		consumeToken();
